@@ -155,7 +155,7 @@ def _render_markdown_html(markdown_text: str) -> str:
         }
     )
     allowed_attributes = {
-        "a": ["href", "title", "target", "rel"],
+        "a": ["href", "title", "rel"],
     }
     return bleach.clean(
         raw_html,
