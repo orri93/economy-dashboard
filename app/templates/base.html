@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Economy Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <header class="site-header">
+        <h1>Economy Dashboard</h1>
+        <nav>
+            <a href="{{ url_for('main.index') }}">Overview</a>
+            <a href="{{ url_for('main.bond_market') }}">The Bond Market</a>
+            <a href="{{ url_for('main.stock_market') }}">The Stock Market</a>
+            <a href="{{ url_for('main.real_estate_market') }}">The Real Estate Market</a>
+            <a href="{{ url_for('main.global_market') }}">The Global Market</a>
+        </nav>
+    </header>
+
+    <main class="content">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
