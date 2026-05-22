@@ -1,3 +1,9 @@
+import json
+from pathlib import Path
+from typing import Any
+
+import bleach
+import markdown
 from flask import Blueprint, render_template
 
 main_bp = Blueprint("main", __name__)
@@ -10,7 +16,19 @@ def index() -> str:
 
 @main_bp.get("/bond-market")
 def bond_market() -> str:
-    return render_template("bond_market.html")
+    bond_status = _load_bond_market_status()
+    ai_analysis_html = _render_markdown_html(
+        bond_status.get("ai_analysis", "No AI evaluation available.")
+    )
+    return render_template(
+        "bond_market.html",
+        generated_at=bond_status.get("generated_at"),
+        source=bond_status.get("source", "Unknown"),
+        fetched_at=bond_status.get("fetched_at"),
+        indicators=bond_status.get("indicators", []),
+        data_errors=bond_status.get("errors", []),
+        ai_analysis_html=ai_analysis_html,
+    )
 
 
 @main_bp.get("/stock-market")
@@ -26,3 +44,81 @@ def real_estate_market() -> str:
 @main_bp.get("/global-market")
 def global_market() -> str:
     return render_template("global_market.html")
+
+
+def _load_bond_market_status() -> dict[str, Any]:
+    root = Path(__file__).resolve().parents[1]
+    status_path = root / "status" / "bond-market" / "latest.json"
+
+    if not status_path.exists():
+        return {
+            "source": "Unavailable",
+            "indicators": [],
+            "errors": [
+                "No bond batch status file found. Run `python -m batch.jobs.bond_job` first."
+            ],
+            "ai_analysis": "No AI evaluation available.",
+        }
+
+    with status_path.open("r", encoding="utf-8") as f:
+        payload = json.load(f)
+
+    snapshot = payload.get("snapshot", {})
+    values = snapshot.get("values", {})
+    indicators = []
+    for name, details in values.items():
+        indicators.append(
+            {
+                "name": name,
+                "value": details.get("value"),
+                "series_id": details.get("series_id", ""),
+                "date": details.get("date", ""),
+            }
+        )
+
+    return {
+        "generated_at": payload.get("generated_at"),
+        "source": snapshot.get("source", "Unknown"),
+        "fetched_at": snapshot.get("fetched_at"),
+        "indicators": indicators,
+        "errors": snapshot.get("errors", []),
+        "ai_analysis": payload.get("ai_analysis", "No AI evaluation available."),
+    }
+
+
+def _render_markdown_html(markdown_text: str) -> str:
+    raw_html = markdown.markdown(
+        markdown_text,
+        extensions=["extra", "sane_lists", "nl2br"],
+    )
+    allowed_tags = set(bleach.sanitizer.ALLOWED_TAGS).union(
+        {
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+            "p",
+            "pre",
+            "code",
+            "ul",
+            "ol",
+            "li",
+            "strong",
+            "em",
+            "blockquote",
+            "hr",
+            "br",
+        }
+    )
+    allowed_attributes = {
+        "a": ["href", "title", "target", "rel"],
+    }
+    return bleach.clean(
+        raw_html,
+        tags=allowed_tags,
+        attributes=allowed_attributes,
+        protocols=["http", "https", "mailto"],
+        strip=True,
+    )

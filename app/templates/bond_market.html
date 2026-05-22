@@ -5,6 +5,51 @@
 <section class="card">
     <h2>The Bond Market</h2>
     <p>Yield curve, Treasury rates, credit spreads, and fixed-income outlook.</p>
-    <p class="placeholder">Data integration placeholder. Connect batch outputs here.</p>
+
+    <h3>Extracted Market Data</h3>
+    <p><strong>Source:</strong> {{ source }}</p>
+    <p><strong>Data fetched at:</strong> {{ fetched_at or "N/A" }}</p>
+    <p><strong>Batch generated at:</strong> {{ generated_at or "N/A" }}</p>
+
+    {% if data_errors %}
+    <div class="status-note">
+        <strong>Data notes:</strong>
+        <ul>
+            {% for error in data_errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if indicators %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Indicator</th>
+                    <th>Value</th>
+                    <th>Series</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in indicators %}
+                <tr>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.value }}</td>
+                    <td>{{ item.series_id }}</td>
+                    <td>{{ item.date }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="placeholder">No extracted indicator data found yet.</p>
+    {% endif %}
+
+    <h3>OpenAI Evaluation</h3>
+    <div class="analysis-block analysis-content">{{ ai_analysis_html | safe }}</div>
 </section>
 {% endblock %}
