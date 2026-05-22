@@ -5,6 +5,198 @@
 <section class="card">
     <h2>The Bond Market</h2>
     <p>Yield curve, Treasury rates, credit spreads, and fixed-income outlook.</p>
-    <p class="placeholder">Data integration placeholder. Connect batch outputs here.</p>
+
+    <h3>Extracted Market Data</h3>
+    <p><strong>Source:</strong> {{ source }}</p>
+    <p><strong>Data fetched at:</strong> {{ fetched_at or "N/A" }}</p>
+    <p><strong>Batch generated at:</strong> {{ generated_at or "N/A" }}</p>
+
+    {% if data_errors %}
+    <div class="status-note">
+        <strong>Data notes:</strong>
+        <ul>
+            {% for error in data_errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if indicators %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Indicator</th>
+                    <th>Value</th>
+                    <th>Series</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in indicators %}
+                <tr>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.value }}</td>
+                    <td>{{ item.series_id }}</td>
+                    <td>{{ item.date }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="placeholder">No extracted indicator data found yet.</p>
+    {% endif %}
+
+    <h3>One-Year Trend Charts</h3>
+    <p class="chart-note">Historical data over the last year for key bond and stress indicators (frequency varies by series).</p>
+    <div class="chart-grid">
+        <div class="chart-card">
+            <h4>US Treasury Yields</h4>
+            <div class="chart-frame">
+                <canvas id="chart-yields" role="img" aria-label="US Treasury Yields one-year trend">US Treasury yields one-year trend chart</canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h4>Credit Spreads</h4>
+            <div class="chart-frame">
+                <canvas id="chart-spreads" role="img" aria-label="Credit spreads one-year trend">Credit spreads one-year trend chart</canvas>
+            </div>
+        </div>
+        <div class="chart-card chart-card-full">
+            <h4>Stress and Volatility Proxies</h4>
+            <div class="chart-frame chart-frame-wide">
+                <canvas id="chart-stress" role="img" aria-label="Stress and volatility one-year trend">Stress and volatility one-year trend chart</canvas>
+            </div>
+        </div>
+    </div>
+
+    <h3>Signal Summary</h3>
+    {% if signal_summary %}
+    <div class="signal-grid">
+        {% for signal in signal_summary %}
+        <article class="signal-card signal-{{ signal.light }}">
+            <div class="signal-header">
+                <span class="signal-light signal-light-{{ signal.light }}" aria-label="{{ signal.light }} status"></span>
+                <h4>{{ signal.name }}</h4>
+            </div>
+            <p><strong>Status:</strong> {{ signal.status }}</p>
+            <p>{{ signal.indication }}</p>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="placeholder">No signal summary available yet.</p>
+    {% endif %}
+
+    <h3>OpenAI Evaluation</h3>
+    <div class="analysis-block analysis-content">{{ ai_analysis_html | safe }}</div>
 </section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+(() => {
+    const history = {{ history_series | tojson }};
+
+    const keyConfig = {
+        yield_2y: { label: "2Y", color: "#0ea5e9" },
+        yield_10y: { label: "10Y", color: "#2563eb" },
+        yield_30y: { label: "30Y", color: "#1d4ed8" },
+        real_yield_10y: { label: "Real 10Y", color: "#0f766e" },
+        yield_curve_10y_2y: { label: "10Y-2Y Curve", color: "#0369a1" },
+        high_yield_spread: { label: "HY Spread", color: "#b45309" },
+        baa_10y_spread: { label: "BAA-10Y Spread", color: "#92400e" },
+        financial_stress_index: { label: "STLFSI", color: "#be123c" },
+        financial_conditions_index: { label: "NFCI", color: "#9f1239" },
+        market_volatility_proxy: { label: "VIX", color: "#7c3aed" },
+    };
+
+    const buildDataset = (seriesKey) => {
+        const points = history[seriesKey] || [];
+        return {
+            label: keyConfig[seriesKey].label,
+            data: points.map(p => p.value),
+            borderColor: keyConfig[seriesKey].color,
+            backgroundColor: keyConfig[seriesKey].color,
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.2,
+        };
+    };
+
+    const buildChart = (canvasId, seriesKeys) => {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            return;
+        }
+
+        const availableKeys = seriesKeys.filter(k => (history[k] || []).length > 0);
+        if (availableKeys.length === 0) {
+            canvas.replaceWith("No one-year history available yet for this chart.");
+            return;
+        }
+
+        const labelKey = availableKeys.reduce((bestKey, key) => {
+            return (history[key] || []).length > (history[bestKey] || []).length ? key : bestKey;
+        }, availableKeys[0]);
+        const labels = (history[labelKey] || []).map(p => p.date);
+
+        const datasets = availableKeys
+            .filter(seriesKey => Boolean(keyConfig[seriesKey]))
+            .map(seriesKey => {
+                const points = history[seriesKey] || [];
+                const valueByDate = new Map(points.map(p => [p.date, p.value]));
+                return {
+                    label: keyConfig[seriesKey].label,
+                    data: labels.map(date => (valueByDate.has(date) ? valueByDate.get(date) : null)),
+                    borderColor: keyConfig[seriesKey].color,
+                    backgroundColor: keyConfig[seriesKey].color,
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.2,
+                };
+            });
+
+        new Chart(canvas, {
+            type: "line",
+            data: {
+                labels,
+                datasets,
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                resizeDelay: 100,
+                animation: false,
+                interaction: {
+                    mode: "index",
+                    intersect: false,
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 10,
+                        },
+                    },
+                    y: {
+                        beginAtZero: false,
+                    },
+                },
+                plugins: {
+                    legend: {
+                        position: "bottom",
+                    },
+                },
+            },
+        });
+    };
+
+    buildChart("chart-yields", ["yield_2y", "yield_10y", "yield_30y", "real_yield_10y"]);
+    buildChart("chart-spreads", ["high_yield_spread", "baa_10y_spread", "yield_curve_10y_2y"]);
+    buildChart("chart-stress", ["financial_stress_index", "financial_conditions_index", "market_volatility_proxy"]);
+})();
+</script>
 {% endblock %}
