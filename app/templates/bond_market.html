@@ -55,13 +55,13 @@
         <div class="chart-card">
             <h4>US Treasury Yields</h4>
             <div class="chart-frame">
-                <canvas id="chart-yields" aria-label="US Treasury Yields one-year trend"></canvas>
+                <canvas id="chart-yields" role="img" aria-label="US Treasury Yields one-year trend">US Treasury yields one-year trend chart</canvas>
             </div>
         </div>
         <div class="chart-card">
             <h4>Credit Spreads</h4>
             <div class="chart-frame">
-                <canvas id="chart-spreads" aria-label="Credit spreads one-year trend"></canvas>
+                <canvas id="chart-spreads" role="img" aria-label="Credit spreads one-year trend">Credit spreads one-year trend chart</canvas>
             </div>
         </div>
         <div class="chart-card chart-card-full">
@@ -119,13 +119,32 @@
             return;
         }
 
-        const labels = (history[availableKeys[0]] || []).map(p => p.date);
+        const labelKey = availableKeys.reduce((bestKey, key) => {
+            return (history[key] || []).length > (history[bestKey] || []).length ? key : bestKey;
+        }, availableKeys[0]);
+        const labels = (history[labelKey] || []).map(p => p.date);
+
+        const datasets = availableKeys
+            .filter(seriesKey => Boolean(keyConfig[seriesKey]))
+            .map(seriesKey => {
+                const points = history[seriesKey] || [];
+                const valueByDate = new Map(points.map(p => [p.date, p.value]));
+                return {
+                    label: keyConfig[seriesKey].label,
+                    data: labels.map(date => (valueByDate.has(date) ? valueByDate.get(date) : null)),
+                    borderColor: keyConfig[seriesKey].color,
+                    backgroundColor: keyConfig[seriesKey].color,
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.2,
+                };
+            });
 
         new Chart(canvas, {
             type: "line",
             data: {
                 labels,
-                datasets: availableKeys.map(buildDataset),
+                datasets,
             },
             options: {
                 responsive: true,

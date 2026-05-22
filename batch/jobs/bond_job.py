@@ -48,18 +48,47 @@ def _percentile_rank(values: list[float], current: float | None) -> float | None
 
 def build_trend_context(snapshot: dict[str, Any]) -> dict[str, dict[str, float | None]]:
     trend_context: dict[str, dict[str, float | None]] = {}
+
     for key in snapshot.get("values", {}).keys():
         current = _value(snapshot, key)
-        values = _history_values(snapshot, key)
-        prior_30d = _lag_value(values, 30)
-        prior_252d = _lag_value(values, 252)
+        raw_points = snapshot.get("history", {}).get(key, {}).get("points", [])
+
+        dated_points: list[tuple[datetime, float]] = []
+        for point in raw_points:
+            date_text = point.get("date")
+            value = point.get("value")
+            if not date_text or not isinstance(value, (int, float)) or not math.isfinite(value):
+                continue
+            try:
+                point_dt = datetime.fromisoformat(str(date_text))
+            except ValueError:
+                continue
+            dated_points.append((point_dt, float(value)))
+
+        dated_points.sort(key=lambda item: item[0])
+        values = [value for _, value in dated_points]
+
+        def value_at_or_before(target_dt: datetime) -> float | None:
+            for point_dt, value in reversed(dated_points):
+                if point_dt <= target_dt:
+                    return value
+            return None
+
+        prior_30d = None
+        prior_1y = None
+        if dated_points:
+            last_dt = dated_points[-1][0]
+            prior_30d = value_at_or_before(datetime.fromordinal(last_dt.toordinal() - 30))
+            prior_1y = value_at_or_before(datetime.fromordinal(last_dt.toordinal() - 365))
+
         trend_context[key] = {
             "current": current,
             "change_30d": _delta(current, prior_30d),
-            "change_1y": _delta(current, prior_252d),
+            "change_1y": _delta(current, prior_1y),
             "percentile_1y": _percentile_rank(values, current),
             "sample_size": float(len(values)),
         }
+
     return trend_context
 
 

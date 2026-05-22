@@ -70,7 +70,7 @@ class OpenAIMarketEvaluator:
                             "type": "input_text",
                             "text": (
                                 "Evaluate the latest bond-market state using this JSON payload:\n"
-                                + json.dumps(payload, indent=2)
+                                + json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
                             ),
                         }
                     ],
