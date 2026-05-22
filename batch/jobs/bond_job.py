@@ -199,7 +199,7 @@ def format_markdown_report(payload: dict[str, Any], ai_analysis: str) -> str:
 
     if trend_context:
         lines.append("")
-        lines.append("## One-Year Trend Context (Daily Resolution)")
+        lines.append("## One-Year Trend Context (Calendar Day Deltas; nearest available observation)")
         for indicator, trend in trend_context.items():
             lines.append(
                 "- **{name}**: 30d change={c30}, 1y change={c1y}, 1y percentile={pct}, samples={n}".format(
