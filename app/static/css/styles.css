@@ -185,3 +185,68 @@ nav a:hover {
 .chart-card-full {
     grid-column: 1 / -1;
 }
+
+.signal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 0.85rem;
+    margin: 0.6rem 0 1.3rem;
+}
+
+.signal-card {
+    border: 1px solid var(--border);
+    border-left-width: 6px;
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 0.8rem;
+}
+
+.signal-card p {
+    margin: 0.35rem 0 0;
+}
+
+.signal-header {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.signal-header h4 {
+    margin: 0;
+    font-size: 0.98rem;
+}
+
+.signal-light {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 999px;
+    display: inline-block;
+    box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px #dbe5ee;
+}
+
+.signal-red {
+    border-left-color: #b91c1c;
+    background: #fff7f7;
+}
+
+.signal-yellow {
+    border-left-color: #a16207;
+    background: #fffdf2;
+}
+
+.signal-green {
+    border-left-color: #15803d;
+    background: #f7fff9;
+}
+
+.signal-light-red {
+    background: #ef4444;
+}
+
+.signal-light-yellow {
+    background: #f59e0b;
+}
+
+.signal-light-green {
+    background: #22c55e;
+}

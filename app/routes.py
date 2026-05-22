@@ -27,6 +27,7 @@ def bond_market() -> str:
         fetched_at=bond_status.get("fetched_at"),
         indicators=bond_status.get("indicators", []),
         history_series=bond_status.get("history_series", {}),
+        signal_summary=bond_status.get("signal_summary", []),
         data_errors=bond_status.get("errors", []),
         ai_analysis_html=ai_analysis_html,
     )
@@ -65,6 +66,7 @@ def _load_bond_market_status() -> dict[str, Any]:
         payload = json.load(f)
 
     snapshot = payload.get("snapshot", {})
+    signal_evaluation = payload.get("signal_evaluation", {})
     values = snapshot.get("values", {})
     history = snapshot.get("history", {})
     indicators = []
@@ -91,15 +93,39 @@ def _load_bond_market_status() -> dict[str, Any]:
             )
         history_series[key] = normalized_points
 
+    signal_summary = []
+    for signal_name, details in signal_evaluation.items():
+        status = str(details.get("status", "unknown"))
+        signal_summary.append(
+            {
+                "name": signal_name,
+                "status": status,
+                "indication": details.get("indication", ""),
+                "light": _status_to_light(status),
+            }
+        )
+
     return {
         "generated_at": payload.get("generated_at"),
         "source": snapshot.get("source", "Unknown"),
         "fetched_at": snapshot.get("fetched_at"),
         "indicators": indicators,
         "history_series": history_series,
+        "signal_summary": signal_summary,
         "errors": snapshot.get("errors", []),
         "ai_analysis": payload.get("ai_analysis", "No AI evaluation available."),
     }
+
+
+def _status_to_light(status: str) -> str:
+    normalized = status.strip().lower()
+    if normalized in {"present", "elevated"}:
+        return "red"
+    if normalized in {"possible", "watch", "mixed", "uncertain"}:
+        return "yellow"
+    if normalized in {"not present", "contained", "not obvious", "stable"}:
+        return "green"
+    return "yellow"
 
 
 def _render_markdown_html(markdown_text: str) -> str:

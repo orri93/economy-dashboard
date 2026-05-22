@@ -72,6 +72,24 @@
         </div>
     </div>
 
+    <h3>Signal Summary</h3>
+    {% if signal_summary %}
+    <div class="signal-grid">
+        {% for signal in signal_summary %}
+        <article class="signal-card signal-{{ signal.light }}">
+            <div class="signal-header">
+                <span class="signal-light signal-light-{{ signal.light }}" aria-label="{{ signal.light }} status"></span>
+                <h4>{{ signal.name }}</h4>
+            </div>
+            <p><strong>Status:</strong> {{ signal.status }}</p>
+            <p>{{ signal.indication }}</p>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="placeholder">No signal summary available yet.</p>
+    {% endif %}
+
     <h3>OpenAI Evaluation</h3>
     <div class="analysis-block analysis-content">{{ ai_analysis_html | safe }}</div>
 </section>
