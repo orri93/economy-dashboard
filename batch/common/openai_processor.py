@@ -11,9 +11,15 @@ from openai import OpenAI
 class OpenAIMarketEvaluator:
     """Shared OpenAI client wrapper for market evaluation jobs."""
 
-    def __init__(self, model: str | None = None) -> None:
+    def __init__(self, model: str | None = None, allow_web_search: bool | None = None) -> None:
         self.model = model or os.getenv("OPENAI_MODEL", "gpt-5-mini")
         self.api_key = os.getenv("OPENAI_API_KEY")
+        self.allow_web_search = (
+            allow_web_search
+            if allow_web_search is not None
+            else os.getenv("OPENAI_ENABLE_WEB_SEARCH", "true").lower()
+            in {"1", "true", "yes", "on"}
+        )
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
 
     def load_instruction_file(self, instruction_path: Path) -> str:
@@ -24,35 +30,57 @@ class OpenAIMarketEvaluator:
             return self._fallback_summary(payload)
 
         try:
-            response = self.client.responses.create(
-                model=self.model,
-                input=[
-                    {
-                        "role": "system",
-                        "content": [
-                            {
-                                "type": "input_text",
-                                "text": instruction_text,
-                            }
-                        ],
-                    },
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "input_text",
-                                "text": (
-                                    "Evaluate the latest bond-market state using this JSON payload:\n"
-                                    + json.dumps(payload, indent=2)
-                                ),
-                            }
-                        ],
-                    },
-                ],
-            )
+            response = self._create_response(instruction_text, payload, use_web_search=self.allow_web_search)
             return response.output_text.strip()
         except Exception as exc:
+            if self.allow_web_search:
+                try:
+                    response = self._create_response(instruction_text, payload, use_web_search=False)
+                    return response.output_text.strip()
+                except Exception as retry_exc:
+                    return self._fallback_summary(
+                        payload,
+                        reason=f"OpenAI call failed (web+no-web retries): {retry_exc}",
+                    )
             return self._fallback_summary(payload, reason=f"OpenAI call failed: {exc}")
+
+    def _create_response(
+        self,
+        instruction_text: str,
+        payload: dict[str, Any],
+        *,
+        use_web_search: bool,
+    ) -> Any:
+        request: dict[str, Any] = {
+            "model": self.model,
+            "input": [
+                {
+                    "role": "system",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": instruction_text,
+                        }
+                    ],
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": (
+                                "Evaluate the latest bond-market state using this JSON payload:\n"
+                                + json.dumps(payload, indent=2)
+                            ),
+                        }
+                    ],
+                },
+            ],
+        }
+        if use_web_search:
+            request["tools"] = [{"type": "web_search_preview"}]
+            request["tool_choice"] = "auto"
+        return self.client.responses.create(**request)
 
     def _fallback_summary(self, payload: dict[str, Any], reason: str | None = None) -> str:
         signals = payload.get("signal_evaluation", {})

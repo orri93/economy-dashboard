@@ -49,7 +49,117 @@
     <p class="placeholder">No extracted indicator data found yet.</p>
     {% endif %}
 
+    <h3>One-Year Trend Charts</h3>
+    <p class="chart-note">Daily data over the last year for key bond and stress indicators.</p>
+    <div class="chart-grid">
+        <div class="chart-card">
+            <h4>US Treasury Yields</h4>
+            <div class="chart-frame">
+                <canvas id="chart-yields" aria-label="US Treasury Yields one-year trend"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h4>Credit Spreads</h4>
+            <div class="chart-frame">
+                <canvas id="chart-spreads" aria-label="Credit spreads one-year trend"></canvas>
+            </div>
+        </div>
+        <div class="chart-card chart-card-full">
+            <h4>Stress and Volatility Proxies</h4>
+            <div class="chart-frame chart-frame-wide">
+                <canvas id="chart-stress" aria-label="Stress and volatility one-year trend"></canvas>
+            </div>
+        </div>
+    </div>
+
     <h3>OpenAI Evaluation</h3>
     <div class="analysis-block analysis-content">{{ ai_analysis_html | safe }}</div>
 </section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+(() => {
+    const history = {{ history_series | tojson }};
+
+    const keyConfig = {
+        yield_2y: { label: "2Y", color: "#0ea5e9" },
+        yield_10y: { label: "10Y", color: "#2563eb" },
+        yield_30y: { label: "30Y", color: "#1d4ed8" },
+        real_yield_10y: { label: "Real 10Y", color: "#0f766e" },
+        yield_curve_10y_2y: { label: "10Y-2Y Curve", color: "#0369a1" },
+        high_yield_spread: { label: "HY Spread", color: "#b45309" },
+        baa_10y_spread: { label: "BAA-10Y Spread", color: "#92400e" },
+        financial_stress_index: { label: "STLFSI", color: "#be123c" },
+        financial_conditions_index: { label: "NFCI", color: "#9f1239" },
+        market_volatility_proxy: { label: "VIX", color: "#7c3aed" },
+    };
+
+    const buildDataset = (seriesKey) => {
+        const points = history[seriesKey] || [];
+        return {
+            label: keyConfig[seriesKey].label,
+            data: points.map(p => p.value),
+            borderColor: keyConfig[seriesKey].color,
+            backgroundColor: keyConfig[seriesKey].color,
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.2,
+        };
+    };
+
+    const buildChart = (canvasId, seriesKeys) => {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            return;
+        }
+
+        const availableKeys = seriesKeys.filter(k => (history[k] || []).length > 0);
+        if (availableKeys.length === 0) {
+            canvas.replaceWith("No one-year history available yet for this chart.");
+            return;
+        }
+
+        const labels = (history[availableKeys[0]] || []).map(p => p.date);
+
+        new Chart(canvas, {
+            type: "line",
+            data: {
+                labels,
+                datasets: availableKeys.map(buildDataset),
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                resizeDelay: 100,
+                animation: false,
+                interaction: {
+                    mode: "index",
+                    intersect: false,
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 10,
+                        },
+                    },
+                    y: {
+                        beginAtZero: false,
+                    },
+                },
+                plugins: {
+                    legend: {
+                        position: "bottom",
+                    },
+                },
+            },
+        });
+    };
+
+    buildChart("chart-yields", ["yield_2y", "yield_10y", "yield_30y", "real_yield_10y"]);
+    buildChart("chart-spreads", ["high_yield_spread", "baa_10y_spread", "yield_curve_10y_2y"]);
+    buildChart("chart-stress", ["financial_stress_index", "financial_conditions_index", "market_volatility_proxy"]);
+})();
+</script>
 {% endblock %}

@@ -141,3 +141,47 @@ nav a:hover {
     padding: 0.8rem;
     overflow-x: auto;
 }
+
+.chart-note {
+    color: var(--muted);
+}
+
+.chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.chart-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fbfdff;
+    padding: 0.75rem;
+}
+
+.chart-card h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+}
+
+.chart-frame {
+    position: relative;
+    height: 260px;
+    max-height: 260px;
+}
+
+.chart-frame-wide {
+    height: 280px;
+    max-height: 280px;
+}
+
+.chart-card canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+.chart-card-full {
+    grid-column: 1 / -1;
+}

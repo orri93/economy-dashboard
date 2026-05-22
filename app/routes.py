@@ -26,6 +26,7 @@ def bond_market() -> str:
         source=bond_status.get("source", "Unknown"),
         fetched_at=bond_status.get("fetched_at"),
         indicators=bond_status.get("indicators", []),
+        history_series=bond_status.get("history_series", {}),
         data_errors=bond_status.get("errors", []),
         ai_analysis_html=ai_analysis_html,
     )
@@ -65,6 +66,7 @@ def _load_bond_market_status() -> dict[str, Any]:
 
     snapshot = payload.get("snapshot", {})
     values = snapshot.get("values", {})
+    history = snapshot.get("history", {})
     indicators = []
     for name, details in values.items():
         indicators.append(
@@ -76,11 +78,25 @@ def _load_bond_market_status() -> dict[str, Any]:
             }
         )
 
+    history_series: dict[str, list[dict[str, Any]]] = {}
+    for key, details in history.items():
+        points = details.get("points", [])
+        normalized_points: list[dict[str, Any]] = []
+        for point in points:
+            normalized_points.append(
+                {
+                    "date": point.get("date"),
+                    "value": point.get("value"),
+                }
+            )
+        history_series[key] = normalized_points
+
     return {
         "generated_at": payload.get("generated_at"),
         "source": snapshot.get("source", "Unknown"),
         "fetched_at": snapshot.get("fetched_at"),
         "indicators": indicators,
+        "history_series": history_series,
         "errors": snapshot.get("errors", []),
         "ai_analysis": payload.get("ai_analysis", "No AI evaluation available."),
     }
