@@ -119,13 +119,32 @@
             return;
         }
 
-        const labels = (history[availableKeys[0]] || []).map(p => p.date);
+        const labelKey = availableKeys.reduce((bestKey, key) => {
+            return (history[key] || []).length > (history[bestKey] || []).length ? key : bestKey;
+        }, availableKeys[0]);
+        const labels = (history[labelKey] || []).map(p => p.date);
+
+        const datasets = availableKeys
+            .filter(seriesKey => Boolean(keyConfig[seriesKey]))
+            .map(seriesKey => {
+                const points = history[seriesKey] || [];
+                const valueByDate = new Map(points.map(p => [p.date, p.value]));
+                return {
+                    label: keyConfig[seriesKey].label,
+                    data: labels.map(date => (valueByDate.has(date) ? valueByDate.get(date) : null)),
+                    borderColor: keyConfig[seriesKey].color,
+                    backgroundColor: keyConfig[seriesKey].color,
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.2,
+                };
+            });
 
         new Chart(canvas, {
             type: "line",
             data: {
                 labels,
-                datasets: availableKeys.map(buildDataset),
+                datasets,
             },
             options: {
                 responsive: true,
